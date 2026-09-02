@@ -3,28 +3,26 @@ import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSettingsStore } from '../store/settingsStore';
 
-interface WebViewWrapperProps {
+type WebViewWrapperProps = {
   url: string;
   isPrivateMode: boolean;
   onNavigationStateChange: (navState: any) => void;
   onLoadProgress?: (progress: number) => void;
-}
+};
 
 export const WebViewWrapper = forwardRef<any, WebViewWrapperProps>(
   ({ url, isPrivateMode, onNavigationStateChange, onLoadProgress }, ref) => {
-    const { blockTrackers } = useSettingsStore();
-
-    // Basic tracker blocking script (simulated for MVP)
+    const { blockTrackers, blockAds, blockCookies } = useSettingsStore();
     const injectedJavaScript = `
-    // Basic ad/tracker hiding
-    const style = document.createElement('style');
-    style.innerHTML = \`
-      .ad, .advertisement, [id*="ad-"], [class*="ad-"] { display: none !important; }
-    \`;
-    document.head.appendChild(style);
-    true;
-  `;
-
+      (() => {
+        const style = document.createElement('style');
+        style.innerHTML = \
+          '${blockAds ? '.ad, .advertisement, [id*="ad-"], [class*="ad-"] { display: none !important; }' : ''}' +
+          '${blockTrackers ? '[data-tracker], [class*="tracking"] { display: none !important; }' : ''}';
+        document.head.appendChild(style);
+      })();
+      true;
+    `;
     return (
       <View style={styles.container}>
         <WebView
@@ -33,14 +31,12 @@ export const WebViewWrapper = forwardRef<any, WebViewWrapperProps>(
           style={styles.webview}
           incognito={isPrivateMode}
           onNavigationStateChange={onNavigationStateChange}
-          onLoadProgress={(syntheticEvent: any) =>
-            onLoadProgress?.(syntheticEvent.nativeEvent.progress)
-          }
+          onLoadProgress={(event: any) => onLoadProgress?.(event.nativeEvent.progress)}
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction
           sharedCookiesEnabled={!isPrivateMode}
-          thirdPartyCookiesEnabled={!blockTrackers && !isPrivateMode}
-          injectedJavaScript={blockTrackers ? injectedJavaScript : undefined}
+          thirdPartyCookiesEnabled={!blockCookies && !isPrivateMode}
+          injectedJavaScript={blockTrackers || blockAds ? injectedJavaScript : undefined}
         />
       </View>
     );
@@ -49,11 +45,4 @@ export const WebViewWrapper = forwardRef<any, WebViewWrapperProps>(
 
 WebViewWrapper.displayName = 'WebViewWrapper';
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  webview: {
-    flex: 1,
-  },
-});
+const styles = StyleSheet.create({ container: { flex: 1 }, webview: { flex: 1 } });

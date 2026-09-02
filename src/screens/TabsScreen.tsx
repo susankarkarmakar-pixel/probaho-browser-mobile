@@ -1,9 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, TYPOGRAPHY } from '../constants/theme';
-import { useBrowserStore } from '../store/browserStore';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { COLORS, RADII, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { IconButton } from '../components/DesignPrimitives';
+import { ScreenContainer } from '../components/ScreenContainer';
+import { useBrowserStore, Tab } from '../store/browserStore';
+import { getDomainFromUrl } from '../utils/urlHelper';
 
 export const TabsScreen = () => {
   const navigation = useNavigation<any>();
@@ -13,156 +16,310 @@ export const TabsScreen = () => {
     isPrivateMode,
     addTab,
     closeTab,
+    closeAllTabs,
     setActiveTab,
     setPrivateMode,
     clearPrivateData,
   } = useBrowserStore();
 
-  const handleTabPress = (id: string) => {
-    setActiveTab(id);
-    navigation.navigate('Browser');
-  };
-
   const handleNewTab = () => {
-    addTab('https://duckduckgo.com');
+    addTab(undefined, 'New Tab', isPrivateMode);
     navigation.navigate('Browser');
   };
-
-  const togglePrivateMode = () => {
-    const newValue = !isPrivateMode;
-    if (!newValue) {
-      clearPrivateData(); // Clear data *before* updating state flag
+  const handlePrivate = () => {
+    if (isPrivateMode) {
+      Alert.alert('Leave private mode?', 'Private tabs will be cleared from this session.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: () => {
+            clearPrivateData();
+            setPrivateMode(false);
+          },
+        },
+      ]);
+    } else {
+      setPrivateMode(true);
+      addTab(undefined, 'Private tab', true);
+      navigation.navigate('Browser');
     }
-    setPrivateMode(newValue);
   };
-
-  const backgroundColor = isPrivateMode ? COLORS.privateBackground : COLORS.background.light;
-  const textColor = isPrivateMode ? COLORS.privateText : COLORS.text.light;
-  const itemBackground = isPrivateMode ? '#3A3A3C' : '#F2F2F7';
-
-  const renderItem = ({ item }: { item: any }) => {
-    const isActive = item.id === activeTabId;
-    return (
-      <TouchableOpacity
-        style={[
-          styles.tabItem,
-          { backgroundColor: itemBackground },
-          isActive && styles.activeTabItem,
-        ]}
-        onPress={() => handleTabPress(item.id)}
-      >
-        <View style={styles.tabInfo}>
-          <Text style={[styles.tabTitle, { color: textColor }]} numberOfLines={1}>
-            {item.title}
-          </Text>
-          <Text style={[styles.tabUrl, { color: '#8E8E93' }]} numberOfLines={1}>
-            {item.url}
-          </Text>
-        </View>
-        <TouchableOpacity style={styles.closeBtn} onPress={() => closeTab(item.id)}>
-          <Ionicons name="close" size={20} color={textColor} />
-        </TouchableOpacity>
-      </TouchableOpacity>
+  const handleCloseAll = () =>
+    Alert.alert(
+      'Close all tabs?',
+      'Your normal browsing tabs will remain available after this action.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Close all', style: 'destructive', onPress: closeAllTabs },
+      ],
     );
-  };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor }]}>
+    <ScreenContainer>
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: textColor }]}>
-          {tabs.length} {tabs.length === 1 ? 'Tab' : 'Tabs'}
-        </Text>
-        <TouchableOpacity onPress={togglePrivateMode} style={styles.privateBtn}>
-          <Ionicons
-            name={isPrivateMode ? 'shield' : 'shield-outline'}
-            size={24}
-            color={isPrivateMode ? COLORS.privateText : COLORS.primary}
-          />
-        </TouchableOpacity>
+        <IconButton
+          icon="grid-outline"
+          label="Tab overview"
+          variant="filled"
+          onPress={() => undefined}
+        />
+        <View style={styles.headerTitle}>
+          <Text style={styles.title}>Tabs</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{tabs.length}</Text>
+          </View>
+        </View>
+        <Pressable
+          onPress={() => navigation.navigate('Browser')}
+          style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}
+          accessibilityRole="button"
+        >
+          <Text style={styles.doneText}>Done</Text>
+        </Pressable>
       </View>
-
+      <View style={styles.modeRow}>
+        <Text style={styles.modeText}>
+          {isPrivateMode ? 'Private browsing is active' : 'All tabs'}
+        </Text>
+        <Pressable
+          onPress={handlePrivate}
+          style={({ pressed }) => [styles.privateButton, pressed && styles.pressed]}
+          accessibilityRole="button"
+        >
+          <Ionicons
+            name={isPrivateMode ? 'eye-off-outline' : 'eye-outline'}
+            size={17}
+            color={COLORS.primary}
+          />
+          <Text style={styles.privateText}>{isPrivateMode ? 'Leave' : 'Private'}</Text>
+        </Pressable>
+      </View>
       <FlatList
         data={tabs}
-        renderItem={renderItem}
+        numColumns={2}
         keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TabCard
+            item={item}
+            active={item.id === activeTabId}
+            onPress={() => {
+              setActiveTab(item.id);
+              navigation.navigate('Browser');
+            }}
+            onClose={() => closeTab(item.id)}
+          />
+        )}
+        columnWrapperStyle={styles.column}
         contentContainerStyle={styles.list}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Ionicons name="copy-outline" size={30} color={COLORS.textSubtle} />
+            <Text style={styles.emptyTitle}>No open tabs</Text>
+            <Text style={styles.emptyText}>Create a tab to start browsing privately.</Text>
+          </View>
+        }
       />
-
-      <TouchableOpacity
-        style={[styles.fab, isPrivateMode && styles.privateFab]}
-        onPress={handleNewTab}
-      >
-        <Ionicons name="add" size={32} color="#FFFFFF" />
-      </TouchableOpacity>
-    </SafeAreaView>
+      <View style={styles.footer}>
+        <Pressable
+          onPress={handleCloseAll}
+          style={({ pressed }) => [styles.closeAll, pressed && styles.pressed]}
+          accessibilityRole="button"
+        >
+          <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+          <Text style={styles.closeAllText}>Close All</Text>
+        </Pressable>
+        <Pressable
+          onPress={handleNewTab}
+          style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="New tab"
+        >
+          <Ionicons name="add" size={28} color={COLORS.surfaceMuted} />
+        </Pressable>
+      </View>
+    </ScreenContainer>
   );
 };
 
+const TabCard = ({
+  item,
+  active,
+  onPress,
+  onClose,
+}: {
+  item: Tab;
+  active: boolean;
+  onPress: () => void;
+  onClose: () => void;
+}) => (
+  <Pressable
+    onPress={onPress}
+    style={({ pressed }) => [
+      styles.tabCard,
+      active && styles.activeCard,
+      item.isPrivate && styles.privateCard,
+      pressed && styles.pressed,
+    ]}
+    accessibilityRole="button"
+    accessibilityLabel={`Open ${item.title}`}
+  >
+    <View style={styles.preview}>
+      <View style={styles.previewTop}>
+        <Ionicons
+          name={item.isPrivate ? 'eye-off-outline' : 'globe-outline'}
+          size={15}
+          color={item.isPrivate ? COLORS.primary : COLORS.secondary}
+        />
+        <View style={styles.previewLines}>
+          <View style={styles.previewLineLong} />
+          <View style={styles.previewLineShort} />
+        </View>
+      </View>
+      <View style={styles.previewBody}>
+        <View style={styles.previewDot} />
+        <View style={styles.previewLine} />
+        <View style={styles.previewLine} />
+      </View>
+    </View>
+    <View style={styles.cardMeta}>
+      <View style={styles.metaCopy}>
+        <Text style={styles.cardTitle} numberOfLines={1}>
+          {item.title || 'New Tab'}
+        </Text>
+        <Text style={styles.cardDomain} numberOfLines={1}>
+          {getDomainFromUrl(item.url)}
+        </Text>
+      </View>
+      <Pressable
+        onPress={onClose}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Close ${item.title}`}
+      >
+        <Ionicons name="close" size={20} color={COLORS.textMuted} />
+      </Pressable>
+    </View>
+  </Pressable>
+);
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    borderBottomColor: COLORS.borderSoft,
   },
-  headerTitle: {
-    ...TYPOGRAPHY.header,
+  headerTitle: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  title: { color: COLORS.text, ...TYPOGRAPHY.title },
+  countBadge: {
+    minWidth: 27,
+    height: 27,
+    borderRadius: RADII.full,
+    backgroundColor: COLORS.surfaceHigh,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  privateBtn: {
-    padding: 8,
-  },
-  list: {
-    padding: 16,
-  },
-  tabItem: {
+  countText: { color: COLORS.textMuted, ...TYPOGRAPHY.subhead },
+  doneButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: SPACING.sm },
+  doneText: { color: COLORS.primary, ...TYPOGRAPHY.callout },
+  modeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
   },
-  activeTabItem: {
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-  },
-  tabInfo: {
+  modeText: { color: COLORS.textMuted, ...TYPOGRAPHY.footnote },
+  privateButton: { flexDirection: 'row', alignItems: 'center', gap: 5, padding: SPACING.xs },
+  privateText: { color: COLORS.primary, ...TYPOGRAPHY.footnote },
+  list: { padding: SPACING.md, paddingBottom: 125 },
+  column: { gap: SPACING.md, marginBottom: SPACING.md },
+  tabCard: {
     flex: 1,
-  },
-  tabTitle: {
-    ...TYPOGRAPHY.body,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  tabUrl: {
-    ...TYPOGRAPHY.small,
-  },
-  closeBtn: {
-    padding: 8,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  privateFab: {
-    backgroundColor: '#3A3A3C',
+    maxWidth: '48.2%',
+    minHeight: 190,
+    borderRadius: RADII.lg,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: '#C6C6C8',
+    borderColor: COLORS.borderSoft,
+    overflow: 'hidden',
+    ...SHADOWS.card,
   },
+  activeCard: { borderColor: COLORS.secondary, borderWidth: 2 },
+  privateCard: { backgroundColor: COLORS.privateSurface },
+  preview: { height: 118, backgroundColor: COLORS.surfaceHighest, padding: SPACING.sm },
+  previewTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingBottom: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderSoft,
+  },
+  previewLines: { flex: 1, gap: 4 },
+  previewLineLong: { height: 5, borderRadius: 3, backgroundColor: COLORS.border },
+  previewLineShort: {
+    width: '55%',
+    height: 4,
+    borderRadius: 3,
+    backgroundColor: COLORS.borderSoft,
+  },
+  previewBody: { paddingTop: SPACING.md, gap: SPACING.sm },
+  previewDot: {
+    width: 31,
+    height: 31,
+    borderRadius: RADII.sm,
+    backgroundColor: COLORS.secondaryContainer,
+  },
+  previewLine: { width: '80%', height: 5, borderRadius: 3, backgroundColor: COLORS.borderSoft },
+  cardMeta: {
+    minHeight: 70,
+    padding: SPACING.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  metaCopy: { flex: 1 },
+  cardTitle: { color: COLORS.text, ...TYPOGRAPHY.subhead },
+  cardDomain: { color: COLORS.textMuted, ...TYPOGRAPHY.caption, marginTop: 3 },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    minHeight: 88,
+    backgroundColor: COLORS.background,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.sm,
+  },
+  closeAll: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, minHeight: 44 },
+  closeAllText: { color: COLORS.danger, ...TYPOGRAPHY.callout },
+  fab: {
+    width: 58,
+    height: 58,
+    borderRadius: RADII.lg,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.card,
+  },
+  empty: { alignItems: 'center', padding: SPACING.xxl },
+  emptyTitle: { color: COLORS.text, ...TYPOGRAPHY.headline, marginTop: SPACING.md },
+  emptyText: {
+    color: COLORS.textMuted,
+    ...TYPOGRAPHY.body,
+    textAlign: 'center',
+    marginTop: SPACING.xs,
+  },
+  pressed: { opacity: 0.72, transform: [{ scale: 0.98 }] },
 });

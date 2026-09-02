@@ -1,49 +1,54 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { COLORS } from './src/constants/theme';
+import { useBrowserStore } from './src/store/browserStore';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { BrowserScreen } from './src/screens/BrowserScreen';
 import { TabsScreen } from './src/screens/TabsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
-import { COLORS } from './src/constants/theme';
-import { useBrowserStore } from './src/store/browserStore';
-import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { PrivacyDashboardScreen } from './src/screens/PrivacyDashboardScreen';
+import { LibraryScreen } from './src/screens/LibraryScreen';
+import { OnboardingScreen } from './src/screens/OnboardingScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const MainTabs = () => {
-  const { isPrivateMode, tabs } = useBrowserStore();
-
-  const tabBarColor = isPrivateMode ? COLORS.privateBackground : COLORS.background.light;
-  const activeColor = isPrivateMode ? COLORS.privateText : COLORS.primary;
-  const inactiveColor = COLORS.inactiveText;
-
+  const { tabs } = useBrowserStore();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: any = 'home';
-
-          if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
-          else if (route.name === 'Browser') iconName = focused ? 'globe' : 'globe-outline';
-          else if (route.name === 'Tabs') iconName = focused ? 'copy' : 'copy-outline';
-          else if (route.name === 'Settings') iconName = focused ? 'settings' : 'settings-outline';
-
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: activeColor,
-        tabBarInactiveTintColor: inactiveColor,
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.textSubtle,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', paddingBottom: 2 },
         tabBarStyle: {
-          backgroundColor: tabBarColor,
-          borderTopColor: isPrivateMode ? COLORS.darkBorder : COLORS.border,
+          backgroundColor: COLORS.surfaceMuted,
+          borderTopColor: COLORS.borderSoft,
+          height: 64,
+          paddingTop: 7,
         },
-        tabBarBadge: route.name === 'Tabs' && tabs.length > 0 ? tabs.length : undefined,
+        tabBarIcon: ({ focused, color, size }) => {
+          const icons: Record<string, [any, any]> = {
+            Home: ['home', 'home-outline'],
+            Browser: ['globe', 'globe-outline'],
+            Tabs: ['copy', 'copy-outline'],
+            Settings: ['settings', 'settings-outline'],
+          };
+          const pair = icons[route.name] || icons.Home;
+          return <Ionicons name={focused ? pair[0] : pair[1]} size={size} color={color} />;
+        },
+        tabBarBadge: route.name === 'Tabs' && tabs.length > 1 ? tabs.length : undefined,
+        tabBarBadgeStyle: {
+          backgroundColor: COLORS.secondary,
+          color: COLORS.surfaceMuted,
+          fontSize: 10,
+        },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
@@ -57,12 +62,34 @@ const MainTabs = () => {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <NavigationContainer
+        theme={{
+          ...DarkTheme,
+          dark: true,
+          colors: {
+            ...DarkTheme.colors,
+            primary: COLORS.primary,
+            background: COLORS.background,
+            card: COLORS.surfaceMuted,
+            text: COLORS.text,
+            border: COLORS.borderSoft,
+            notification: COLORS.secondary,
+          },
+        }}
+      >
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: COLORS.background },
+          }}
+        >
           <Stack.Screen name="Root" component={MainTabs} />
+          <Stack.Screen name="PrivacyDashboard" component={PrivacyDashboardScreen} />
+          <Stack.Screen name="Library" component={LibraryScreen} />
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         </Stack.Navigator>
       </NavigationContainer>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </SafeAreaProvider>
   );
 }

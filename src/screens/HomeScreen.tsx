@@ -1,162 +1,271 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import React, { useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, TYPOGRAPHY } from '../constants/theme';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { COLORS, RADII, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { IconButton, QuickLinkGrid, SurfaceCard } from '../components/DesignPrimitives';
+import { ScreenContainer } from '../components/ScreenContainer';
 import { useBrowserStore } from '../store/browserStore';
+import { useSettingsStore } from '../store/settingsStore';
 import { normalizeUrl } from '../utils/urlHelper';
-
-const QUICK_LINKS = [
-  { name: 'DuckDuckGo', url: 'https://duckduckgo.com', icon: 'search' },
-  { name: 'Wikipedia', url: 'https://wikipedia.org', icon: 'book' },
-  { name: 'GitHub', url: 'https://github.com', icon: 'logo-github' },
-  { name: 'Hacker News', url: 'https://news.ycombinator.com', icon: 'newspaper' },
-];
 
 export const HomeScreen = () => {
   const navigation = useNavigation<any>();
-  const { isPrivateMode, addTab } = useBrowserStore();
+  const { tabs, activeTabId, isPrivateMode, addTab, updateTab } = useBrowserStore();
+  const { blockTrackers } = useSettingsStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const activeTab = tabs.find((tab) => tab.id === activeTabId);
+  const blockedCount = useMemo(
+    () => tabs.reduce((total, tab) => total + tab.blockedCount, 0),
+    [tabs],
+  );
 
-  const handleQuickLink = (url: string) => {
-    addTab(url);
+  const navigate = (rawInput: string) => {
+    const url = normalizeUrl(rawInput || '');
+    if (activeTabId) updateTab(activeTabId, { url, title: rawInput.trim() || 'New Tab' });
+    else addTab(url, 'New Tab', isPrivateMode);
+    setSearchQuery('');
     navigation.navigate('Browser');
   };
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      addTab(normalizeUrl(searchQuery));
-      setSearchQuery('');
+  const handleQuickLink = (query: string) => {
+    if (!query) {
       navigation.navigate('Browser');
+      return;
     }
+    navigate(query);
   };
 
-  const backgroundColor = isPrivateMode ? COLORS.privateBackground : COLORS.background.light;
-  const textColor = isPrivateMode ? COLORS.privateText : COLORS.text.light;
-
   return (
-    <View style={[styles.container, { backgroundColor }]}>
-      <View style={styles.header}>
-        <Ionicons
-          name="shield-checkmark"
-          size={48}
-          color={isPrivateMode ? COLORS.privateText : COLORS.primary}
-        />
-        <Text style={[styles.title, { color: textColor }]}>
-          {isPrivateMode ? 'Private Browsing' : 'Probaho Browser'}
-        </Text>
-        {isPrivateMode && (
-          <Text style={styles.subtitle}>
-            Your history, cookies, and cache will be cleared when you close this tab.
-          </Text>
-        )}
-      </View>
+    <ScreenContainer>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.brand}>Probaho</Text>
+            <Text style={styles.greeting}>
+              {isPrivateMode ? 'Private browsing' : 'Good morning'}
+            </Text>
+          </View>
+          <IconButton
+            icon="person-outline"
+            label="Open profile"
+            variant="filled"
+            onPress={() => navigation.navigate('Settings')}
+          />
+        </View>
 
-      <View
-        style={[styles.searchContainer, isPrivateMode ? styles.privateSearch : styles.lightSearch]}
-      >
-        <Ionicons
-          name="search"
-          size={20}
-          color={isPrivateMode ? '#999' : '#666'}
-          style={styles.searchIcon}
-        />
-        <TextInput
-          style={[styles.searchInput, { color: textColor }]}
-          placeholder="Search or enter website"
-          placeholderTextColor={isPrivateMode ? '#999' : '#666'}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch}
-          returnKeyType="go"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-      </View>
+        <Pressable
+          onPress={() => navigation.navigate('PrivacyDashboard')}
+          style={({ pressed }) => [styles.shieldTile, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Open privacy dashboard"
+        >
+          <Ionicons
+            name={isPrivateMode ? 'eye-off-outline' : 'shield-checkmark-outline'}
+            size={29}
+            color={COLORS.primary}
+          />
+          <Text style={styles.shieldLabel}>{isPrivateMode ? 'Private' : 'Protected'}</Text>
+        </Pressable>
 
-      <Text style={[styles.sectionTitle, { color: textColor }]}>Quick Links</Text>
+        <View style={styles.searchBar}>
+          <Ionicons name="search-outline" size={22} color={COLORS.secondary} />
+          <TextInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={() => navigate(searchQuery)}
+            placeholder="Search or enter address"
+            placeholderTextColor={COLORS.textMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="go"
+          />
+          <Ionicons name="mic-outline" size={20} color={COLORS.textMuted} />
+        </View>
 
-      <View style={styles.grid}>
-        {QUICK_LINKS.map((link) => (
-          <TouchableOpacity
-            key={link.url}
-            style={[styles.card, { backgroundColor: isPrivateMode ? '#3A3A3C' : '#F2F2F7' }]}
-            onPress={() => handleQuickLink(link.url)}
+        <QuickLinkGrid onSelect={handleQuickLink} />
+
+        <SurfaceCard style={styles.privacyCard}>
+          <View style={styles.privacyTitleRow}>
+            <View style={styles.privacyBadge}>
+              <Ionicons name="shield-checkmark-outline" size={21} color={COLORS.primary} />
+            </View>
+            <View style={styles.privacyCopy}>
+              <Text style={styles.privacyTitle}>Transparent security</Text>
+              <Text style={styles.privacySubtitle}>
+                {blockTrackers
+                  ? 'Protection is active on this device'
+                  : 'Tracker protection is paused'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.privacyStats}>
+            <View>
+              <Text style={styles.statValue}>{blockedCount || '—'}</Text>
+              <Text style={styles.statLabel}>TRACKERS BLOCKED</Text>
+            </View>
+            <View>
+              <Text style={styles.statValue}>{tabs.length}</Text>
+              <Text style={styles.statLabel}>OPEN TABS</Text>
+            </View>
+            <View>
+              <Text style={styles.statValue}>{activeTab?.isPrivate ? 'ON' : 'OFF'}</Text>
+              <Text style={styles.statLabel}>PRIVATE MODE</Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => navigation.navigate('PrivacyDashboard')}
+            style={({ pressed }) => [styles.viewReport, pressed && styles.pressed]}
           >
-            <Ionicons name={link.icon as any} size={24} color={textColor} />
-            <Text style={[styles.cardText, { color: textColor }]}>{link.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
+            <Text style={styles.viewReportText}>View privacy dashboard</Text>
+            <Ionicons name="arrow-forward" size={17} color={COLORS.secondary} />
+          </Pressable>
+        </SurfaceCard>
+
+        <Text style={styles.sectionTitle}>Your shortcuts</Text>
+        <View style={styles.shortcutRow}>
+          <Shortcut
+            icon="bookmark-outline"
+            label="Bookmarks"
+            onPress={() => navigation.navigate('Library', { mode: 'bookmarks' })}
+          />
+          <Shortcut
+            icon="time-outline"
+            label="History"
+            onPress={() => navigation.navigate('Library', { mode: 'history' })}
+          />
+          <Shortcut
+            icon="download-outline"
+            label="Downloads"
+            onPress={() => navigation.navigate('Library', { mode: 'downloads' })}
+          />
+        </View>
+      </ScrollView>
+    </ScreenContainer>
   );
 };
 
+const Shortcut = ({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  onPress: () => void;
+}) => (
+  <Pressable
+    onPress={onPress}
+    style={({ pressed }) => [styles.shortcut, pressed && styles.pressed]}
+    accessibilityRole="button"
+    accessibilityLabel={label}
+  >
+    <Ionicons name={icon} size={22} color={COLORS.textMuted} />
+    <Text style={styles.shortcutLabel}>{label}</Text>
+  </Pressable>
+);
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
+  content: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: SPACING.xxl },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 60,
-    marginBottom: 40,
+    marginBottom: SPACING.xl,
   },
-  title: {
-    ...TYPOGRAPHY.header,
-    marginTop: 16,
+  brand: { color: COLORS.primary, fontSize: 19, fontWeight: '700', lineHeight: 24 },
+  greeting: {
+    color: COLORS.text,
+    ...TYPOGRAPHY.callout,
+    marginTop: 2,
+    textTransform: 'capitalize',
   },
-  subtitle: {
-    ...TYPOGRAPHY.body,
-    color: '#8E8E93',
-    textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 20,
+  shieldTile: {
+    alignSelf: 'center',
+    width: 84,
+    height: 84,
+    borderRadius: RADII.lg,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderSoft,
+    marginBottom: SPACING.lg,
+    ...SHADOWS.card,
   },
-  searchContainer: {
+  shieldLabel: { color: COLORS.textSubtle, ...TYPOGRAPHY.caption, marginTop: 4 },
+  searchBar: {
+    height: 58,
+    borderRadius: RADII.xl,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.borderSoft,
+    paddingHorizontal: SPACING.md,
     flexDirection: 'row',
     alignItems: 'center',
-    height: 50,
-    borderRadius: 25,
-    paddingHorizontal: 16,
-    marginBottom: 32,
-  },
-  lightSearch: {
-    backgroundColor: COLORS.omnibox.light,
-  },
-  privateSearch: {
-    backgroundColor: COLORS.omnibox.dark,
-    borderWidth: 1,
-    borderColor: COLORS.darkBorder,
-  },
-  searchIcon: {
-    marginRight: 8,
+    marginBottom: SPACING.xl,
   },
   searchInput: {
     flex: 1,
-    height: '100%',
-    fontSize: 16,
-  },
-  sectionTitle: {
-    ...TYPOGRAPHY.header,
-    fontSize: 18,
-    marginBottom: 16,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  card: {
-    width: '48%',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  cardText: {
+    color: COLORS.text,
     ...TYPOGRAPHY.body,
-    marginTop: 8,
-    fontWeight: '500',
+    marginHorizontal: SPACING.sm,
+    paddingVertical: 0,
   },
+  privacyCard: {
+    marginTop: SPACING.xl,
+    backgroundColor: COLORS.surfaceHigh,
+    borderColor: COLORS.secondaryContainer,
+  },
+  privacyTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  privacyBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: RADII.full,
+    backgroundColor: 'rgba(211,187,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  privacyCopy: { marginLeft: SPACING.sm, flex: 1 },
+  privacyTitle: { color: COLORS.text, ...TYPOGRAPHY.headline },
+  privacySubtitle: { color: COLORS.textMuted, ...TYPOGRAPHY.footnote, marginTop: 2 },
+  privacyStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderSoft,
+    marginTop: SPACING.md,
+    paddingTop: SPACING.md,
+  },
+  statValue: { color: COLORS.text, fontSize: 23, lineHeight: 28, fontWeight: '700' },
+  statLabel: { color: COLORS.textMuted, ...TYPOGRAPHY.caption, marginTop: 2 },
+  viewReport: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: SPACING.md,
+    paddingTop: SPACING.sm,
+  },
+  viewReportText: { color: COLORS.secondary, ...TYPOGRAPHY.subhead },
+  sectionTitle: {
+    color: COLORS.text,
+    ...TYPOGRAPHY.headline,
+    marginTop: SPACING.xl,
+    marginBottom: SPACING.sm,
+  },
+  shortcutRow: { flexDirection: 'row', gap: SPACING.sm },
+  shortcut: {
+    flex: 1,
+    minHeight: 76,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADII.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+  },
+  shortcutLabel: { color: COLORS.textMuted, ...TYPOGRAPHY.caption },
+  pressed: { opacity: 0.72, transform: [{ scale: 0.98 }] },
 });

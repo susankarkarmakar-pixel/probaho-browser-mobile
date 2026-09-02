@@ -1,80 +1,65 @@
-import React, { useState, useEffect } from 'react';
-import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../constants/theme';
-import { normalizeUrl, getDomainFromUrl } from '../utils/urlHelper';
+import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { COLORS, RADII, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { getDomainFromUrl, normalizeUrl } from '../utils/urlHelper';
 
-interface URLInputProps {
+type URLInputProps = {
   currentUrl: string;
   isPrivateMode: boolean;
   onNavigate: (url: string) => void;
   onReload?: () => void;
-}
+};
 
-export const URLInput: React.FC<URLInputProps> = ({
-  currentUrl,
-  isPrivateMode,
-  onNavigate,
-  onReload,
-}) => {
+export const URLInput = ({ currentUrl, isPrivateMode, onNavigate, onReload }: URLInputProps) => {
   const [input, setInput] = useState(currentUrl);
   const [isEditing, setIsEditing] = useState(false);
-
   useEffect(() => {
-    if (!isEditing) {
-      setInput(currentUrl);
-    }
+    if (!isEditing) setInput(currentUrl);
   }, [currentUrl, isEditing]);
-
-  const handleSubmit = () => {
+  const submit = () => {
     setIsEditing(false);
-    const newUrl = normalizeUrl(input);
-    onNavigate(newUrl);
+    onNavigate(normalizeUrl(input));
   };
-
-  const getDisplayValue = () => {
-    if (isEditing) return input;
-    if (currentUrl === 'about:blank' || currentUrl.startsWith('https://duckduckgo.com')) {
-      return '';
-    }
-    return getDomainFromUrl(currentUrl);
-  };
-
+  const displayValue = isEditing
+    ? input
+    : currentUrl === 'about:blank' || currentUrl.includes('duckduckgo.com')
+      ? ''
+      : getDomainFromUrl(currentUrl);
   return (
-    <View
-      style={[styles.container, isPrivateMode ? styles.privateContainer : styles.lightContainer]}
-    >
+    <View style={[styles.container, isPrivateMode && styles.privateContainer]}>
       <Ionicons
-        name={isPrivateMode ? 'shield' : 'lock-closed'}
-        size={16}
-        color={isPrivateMode ? COLORS.privateText : COLORS.text.light}
-        style={styles.icon}
+        name={isPrivateMode ? 'eye-off-outline' : 'shield-checkmark-outline'}
+        size={18}
+        color={isPrivateMode ? COLORS.primary : COLORS.secondary}
       />
       <TextInput
-        style={[styles.input, isPrivateMode ? styles.privateInput : styles.lightInput]}
-        value={isEditing ? input : getDisplayValue()}
+        style={styles.input}
+        value={displayValue}
         onChangeText={setInput}
-        onFocus={() => setIsEditing(true)}
-        onBlur={() => {
-          setIsEditing(false);
+        onFocus={() => {
+          setIsEditing(true);
           setInput(currentUrl);
         }}
-        onSubmitEditing={handleSubmit}
-        placeholder="Search or enter website"
-        placeholderTextColor={isPrivateMode ? '#999' : '#666'}
+        onBlur={() => setIsEditing(false)}
+        onSubmitEditing={submit}
+        placeholder="Search or enter address"
+        placeholderTextColor={COLORS.textMuted}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="url"
         returnKeyType="go"
         selectTextOnFocus
+        accessibilityLabel="Search or enter web address"
       />
       {!isEditing && onReload && (
-        <TouchableOpacity onPress={onReload} style={styles.reloadBtn}>
-          <Ionicons
-            name="refresh"
-            size={20}
-            color={isPrivateMode ? COLORS.privateText : COLORS.text.light}
-          />
+        <TouchableOpacity
+          onPress={onReload}
+          style={styles.reload}
+          accessibilityRole="button"
+          accessibilityLabel="Reload page"
+        >
+          <Ionicons name="refresh-outline" size={18} color={COLORS.textMuted} />
         </TouchableOpacity>
       )}
     </View>
@@ -85,36 +70,25 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 40,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    marginHorizontal: 16,
-    marginVertical: 8,
-  },
-  lightContainer: {
-    backgroundColor: COLORS.omnibox.light,
+    height: 46,
+    borderRadius: RADII.xl,
+    paddingHorizontal: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.borderSoft,
+    marginHorizontal: SPACING.xs,
   },
   privateContainer: {
-    backgroundColor: COLORS.omnibox.dark,
-    borderWidth: 1,
-    borderColor: COLORS.darkBorder,
+    backgroundColor: COLORS.privateSurface,
+    borderColor: COLORS.primaryContainer,
   },
   input: {
     flex: 1,
-    height: '100%',
-    fontSize: 16,
-    paddingHorizontal: 8,
+    color: COLORS.text,
+    ...TYPOGRAPHY.subhead,
+    minWidth: 0,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 0,
   },
-  lightInput: {
-    color: COLORS.text.light,
-  },
-  privateInput: {
-    color: COLORS.privateText,
-  },
-  icon: {
-    marginRight: 4,
-  },
-  reloadBtn: {
-    padding: 4,
-  },
+  reload: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 });
