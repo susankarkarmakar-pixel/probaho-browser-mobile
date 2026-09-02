@@ -1,12 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, TYPOGRAPHY } from '../constants/theme';
 import { useBrowserStore } from '../store/browserStore';
 
+import { AppNavigationProp } from '../../App';
+
 export const TabsScreen = () => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<AppNavigationProp>();
   const {
     tabs,
     activeTabId,
@@ -40,7 +43,7 @@ export const TabsScreen = () => {
   const textColor = isPrivateMode ? COLORS.privateText : COLORS.text.light;
   const itemBackground = isPrivateMode ? '#3A3A3C' : '#F2F2F7';
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({ item }: { item: { id: string; title: string; url: string } }) => {
     const isActive = item.id === activeTabId;
     return (
       <TouchableOpacity

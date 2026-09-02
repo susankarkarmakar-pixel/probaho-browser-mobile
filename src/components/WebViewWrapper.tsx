@@ -1,16 +1,17 @@
 import React, { forwardRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { WebView, WebViewNavigation } from 'react-native-webview';
+import type { WebViewProgressEvent } from 'react-native-webview/lib/WebViewTypes';
 import { useSettingsStore } from '../store/settingsStore';
 
 interface WebViewWrapperProps {
   url: string;
   isPrivateMode: boolean;
-  onNavigationStateChange: (navState: any) => void;
+  onNavigationStateChange: (navState: WebViewNavigation) => void;
   onLoadProgress?: (progress: number) => void;
 }
 
-export const WebViewWrapper = forwardRef<any, WebViewWrapperProps>(
+export const WebViewWrapper = forwardRef<WebView<unknown>, WebViewWrapperProps>(
   ({ url, isPrivateMode, onNavigationStateChange, onLoadProgress }, ref) => {
     const { blockTrackers } = useSettingsStore();
 
@@ -33,7 +34,7 @@ export const WebViewWrapper = forwardRef<any, WebViewWrapperProps>(
           style={styles.webview}
           incognito={isPrivateMode}
           onNavigationStateChange={onNavigationStateChange}
-          onLoadProgress={(syntheticEvent: any) =>
+          onLoadProgress={(syntheticEvent: WebViewProgressEvent) =>
             onLoadProgress?.(syntheticEvent.nativeEvent.progress)
           }
           allowsInlineMediaPlayback

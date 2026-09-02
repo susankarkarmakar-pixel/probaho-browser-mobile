@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { WebView } from 'react-native-webview';
+import { WebView, WebViewNavigation } from 'react-native-webview';
 import { URLInput } from '../components/URLInput';
 import { WebViewWrapper } from '../components/WebViewWrapper';
 import { useBrowserStore } from '../store/browserStore';
@@ -23,7 +24,7 @@ export const BrowserScreen = () => {
     }
   }, [activeTabId]); // Only when active tab changes, not on every URL update
 
-  const handleNavigationStateChange = (navState: any) => {
+  const handleNavigationStateChange = (navState: WebViewNavigation) => {
     setCurrentUrl(navState.url);
     setCanGoBack(navState.canGoBack);
     setCanGoForward(navState.canGoForward);

@@ -1,24 +1,41 @@
 export const COLORS = {
-  primary: '#007AFF',
+  primary: '#D3BBFF', // Lavender
+  secondary: '#4CD7F6', // Cyan (for active/secure states)
   background: {
+    main: '#15121B', // Deep purple-black
+    surface1: '#1D1A24',
+    surface2: '#221E28',
+    surface3: '#2C2833',
     light: '#FFFFFF',
-    dark: '#1C1C1E',
+    dark: '#15121B',
   },
   text: {
+    primary: '#E8E0EE',
+    secondary: '#CCC3D7',
     light: '#000000',
-    dark: '#FFFFFF',
+    dark: '#E8E0EE',
   },
-  privateBackground: '#2C2C2E', // Darker background for private mode
-  privateText: '#E5E5EA',
-  border: '#C6C6C8',
-  darkBorder: '#38383A',
+  privateBackground: '#1D1A24',
+  privateText: '#E8E0EE',
+  border: '#2C2833',
+  darkBorder: '#2C2833',
   omnibox: {
+    main: '#221E28',
     light: '#F2F2F7',
-    dark: '#2C2C2E',
+    dark: '#221E28',
   },
-  danger: '#FF3B30',
-  success: '#34C759',
-  inactiveText: '#8E8E93',
+  danger: '#FFB4AB', // Coral
+  success: '#4CD7F6',
+  inactiveText: '#CCC3D7',
+};
+
+export const GEOMETRY = {
+  radius: {
+    controls: 8,
+    cards: 12,
+    containers: 16,
+    omnibox: 24,
+  },
 };
 
 export const TYPOGRAPHY = {

@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, TYPOGRAPHY } from '../constants/theme';
+import { COLORS, TYPOGRAPHY, GEOMETRY } from '../constants/theme';
 import { useBrowserStore } from '../store/browserStore';
+import { useSettingsStore } from '../store/settingsStore';
 import { normalizeUrl } from '../utils/urlHelper';
+import { AppNavigationProp } from '../../App';
 
 const QUICK_LINKS = [
   { name: 'DuckDuckGo', url: 'https://duckduckgo.com', icon: 'search' },
@@ -14,9 +17,17 @@ const QUICK_LINKS = [
 ];
 
 export const HomeScreen = () => {
-  const navigation = useNavigation<any>();
-  const { isPrivateMode, addTab } = useBrowserStore();
+  const navigation = useNavigation<AppNavigationProp>();
+  const { isPrivateMode, addTab, tabs } = useBrowserStore();
+  const { blockTrackers, dnsOverHttps } = useSettingsStore();
   const [searchQuery, setSearchQuery] = useState('');
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   const handleQuickLink = (url: string) => {
     addTab(url);
@@ -31,132 +42,209 @@ export const HomeScreen = () => {
     }
   };
 
-  const backgroundColor = isPrivateMode ? COLORS.privateBackground : COLORS.background.light;
-  const textColor = isPrivateMode ? COLORS.privateText : COLORS.text.light;
-
   return (
-    <View style={[styles.container, { backgroundColor }]}>
-      <View style={styles.header}>
-        <Ionicons
-          name="shield-checkmark"
-          size={48}
-          color={isPrivateMode ? COLORS.privateText : COLORS.primary}
-        />
-        <Text style={[styles.title, { color: textColor }]}>
-          {isPrivateMode ? 'Private Browsing' : 'Probaho Browser'}
-        </Text>
-        {isPrivateMode && (
-          <Text style={styles.subtitle}>
-            Your history, cookies, and cache will be cleared when you close this tab.
-          </Text>
-        )}
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.greeting}>{getGreeting()}</Text>
+          <Text style={styles.title}>{isPrivateMode ? 'Private Session' : 'Ready to browse'}</Text>
+        </View>
 
-      <View
-        style={[styles.searchContainer, isPrivateMode ? styles.privateSearch : styles.lightSearch]}
-      >
-        <Ionicons
-          name="search"
-          size={20}
-          color={isPrivateMode ? '#999' : '#666'}
-          style={styles.searchIcon}
-        />
-        <TextInput
-          style={[styles.searchInput, { color: textColor }]}
-          placeholder="Search or enter website"
-          placeholderTextColor={isPrivateMode ? '#999' : '#666'}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch}
-          returnKeyType="go"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-      </View>
+        {/* Omnibox */}
+        <View style={[styles.searchContainer, isPrivateMode && styles.privateSearch]}>
+          <Ionicons
+            name="search"
+            size={20}
+            color={COLORS.text.secondary}
+            style={styles.searchIcon}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search or enter website"
+            placeholderTextColor={COLORS.text.secondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="go"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
 
-      <Text style={[styles.sectionTitle, { color: textColor }]}>Quick Links</Text>
+        {/* Privacy Summary Card */}
+        <View style={styles.privacyCard}>
+          <View style={styles.privacyHeader}>
+            <Ionicons name="shield-checkmark" size={24} color={COLORS.secondary} />
+            <Text style={styles.privacyTitle}>Privacy Overview</Text>
+          </View>
+          <View style={styles.privacyMetrics}>
+            <View style={styles.metricItem}>
+              <Text style={styles.metricValue}>{blockTrackers ? 'Active' : 'Off'}</Text>
+              <Text style={styles.metricLabel}>Tracker Blocker</Text>
+            </View>
+            <View style={styles.metricItem}>
+              <Text style={styles.metricValue}>{dnsOverHttps ? 'Active' : 'Off'}</Text>
+              <Text style={styles.metricLabel}>Secure DNS</Text>
+            </View>
+            <View style={styles.metricItem}>
+              <Text style={styles.metricValue}>{tabs.length}</Text>
+              <Text style={styles.metricLabel}>Open Tabs</Text>
+            </View>
+          </View>
+        </View>
 
-      <View style={styles.grid}>
-        {QUICK_LINKS.map((link) => (
-          <TouchableOpacity
-            key={link.url}
-            style={[styles.card, { backgroundColor: isPrivateMode ? '#3A3A3C' : '#F2F2F7' }]}
-            onPress={() => handleQuickLink(link.url)}
-          >
-            <Ionicons name={link.icon as any} size={24} color={textColor} />
-            <Text style={[styles.cardText, { color: textColor }]}>{link.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
+        {/* Quick Links */}
+        <Text style={styles.sectionTitle}>Quick Links</Text>
+        <View style={styles.grid}>
+          {QUICK_LINKS.map((link) => (
+            <TouchableOpacity
+              key={link.url}
+              style={[styles.card, isPrivateMode && styles.privateCard]}
+              onPress={() => handleQuickLink(link.url)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.cardIconContainer}>
+                <Ionicons
+                  name={link.icon as keyof typeof Ionicons.glyphMap}
+                  size={24}
+                  color={COLORS.text.primary}
+                />
+              </View>
+              <Text style={styles.cardText}>{link.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    padding: 16,
+    backgroundColor: COLORS.background.main,
+  },
+  container: {
+    padding: 20,
+    paddingBottom: 40,
   },
   header: {
-    alignItems: 'center',
-    marginTop: 60,
-    marginBottom: 40,
+    marginTop: 24,
+    marginBottom: 32,
+  },
+  greeting: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.text.secondary,
+    marginBottom: 4,
   },
   title: {
     ...TYPOGRAPHY.header,
-    marginTop: 16,
-  },
-  subtitle: {
-    ...TYPOGRAPHY.body,
-    color: '#8E8E93',
-    textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 20,
+    color: COLORS.text.primary,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 50,
-    borderRadius: 25,
-    paddingHorizontal: 16,
+    height: 56, // Accessible touch target height
+    backgroundColor: COLORS.omnibox.main,
+    borderRadius: GEOMETRY.radius.omnibox,
+    paddingHorizontal: 20,
     marginBottom: 32,
-  },
-  lightSearch: {
-    backgroundColor: COLORS.omnibox.light,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   privateSearch: {
-    backgroundColor: COLORS.omnibox.dark,
-    borderWidth: 1,
-    borderColor: COLORS.darkBorder,
+    borderColor: COLORS.secondary,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 12,
   },
   searchInput: {
     flex: 1,
     height: '100%',
     fontSize: 16,
+    color: COLORS.text.primary,
+  },
+  privacyCard: {
+    backgroundColor: COLORS.background.surface1,
+    borderRadius: GEOMETRY.radius.containers,
+    padding: 20,
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  privacyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  privacyTitle: {
+    ...TYPOGRAPHY.body,
+    fontWeight: '600',
+    color: COLORS.text.primary,
+    marginLeft: 12,
+  },
+  privacyMetrics: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.background.surface2,
+    borderRadius: GEOMETRY.radius.cards,
+    padding: 16,
+  },
+  metricItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  metricValue: {
+    ...TYPOGRAPHY.header,
+    fontSize: 20,
+    color: COLORS.primary,
+    marginBottom: 4,
+  },
+  metricLabel: {
+    ...TYPOGRAPHY.small,
+    color: COLORS.text.secondary,
+    textAlign: 'center',
   },
   sectionTitle: {
     ...TYPOGRAPHY.header,
     fontSize: 18,
+    color: COLORS.text.primary,
     marginBottom: 16,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 12,
   },
   card: {
     width: '48%',
+    backgroundColor: COLORS.background.surface1,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: GEOMETRY.radius.cards,
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    minHeight: 100, // Make sure cards are large enough
+  },
+  privateCard: {
+    backgroundColor: COLORS.background.surface2,
+  },
+  cardIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.background.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   cardText: {
     ...TYPOGRAPHY.body,
-    marginTop: 8,
     fontWeight: '500',
+    color: COLORS.text.primary,
+    textAlign: 'center',
   },
 });

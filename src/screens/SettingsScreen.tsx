@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Switch, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Switch, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, TYPOGRAPHY } from '../constants/theme';
 import { useSettingsStore } from '../store/settingsStore';
 import { useBrowserStore } from '../store/browserStore';
@@ -13,7 +14,14 @@ export const SettingsScreen = () => {
   const textColor = isPrivateMode ? COLORS.privateText : COLORS.text.light;
   const itemBackground = isPrivateMode ? '#3A3A3C' : '#F2F2F7';
 
-  const SettingToggle = ({ title, description, value, onValueChange }: any) => (
+  interface SettingToggleProps {
+    title: string;
+    description: string;
+    value: boolean;
+    onValueChange: (value: boolean) => void;
+  }
+
+  const SettingToggle = ({ title, description, value, onValueChange }: SettingToggleProps) => (
     <View style={[styles.settingItem, { backgroundColor: itemBackground }]}>
       <View style={styles.settingTextContainer}>
         <Text style={[styles.settingTitle, { color: textColor }]}>{title}</Text>
@@ -62,7 +70,7 @@ export const SettingsScreen = () => {
                   styles.themeOptionText,
                   { color: theme === t ? COLORS.primary : '#8E8E93' },
                 ]}
-                onPress={() => setTheme(t as any)}
+                onPress={() => setTheme(t as 'light' | 'dark' | 'system')}
               >
                 {t.charAt(0).toUpperCase() + t.slice(1)}
               </Text>
