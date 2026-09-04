@@ -26,6 +26,7 @@ const MainTabs = () => {
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textSubtle,
+        tabBarButtonTestID: `${route.name.toLowerCase()}-tab`,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600', paddingBottom: 2 },
         tabBarStyle: {
           backgroundColor: COLORS.surfaceMuted,

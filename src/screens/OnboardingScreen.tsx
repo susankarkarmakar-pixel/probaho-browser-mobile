@@ -36,10 +36,10 @@ export const OnboardingScreen = () => {
     navigation.goBack();
   };
   return (
-    <View style={styles.container}>
+    <View testID="onboarding-screen" style={styles.container}>
       <View style={styles.top}>
         <Text style={styles.brand}>Probaho</Text>
-        <Pressable onPress={finish} accessibilityRole="button">
+        <Pressable testID="skip-onboarding" onPress={finish} accessibilityRole="button">
           <Text style={styles.skip}>Skip</Text>
         </Pressable>
       </View>
@@ -65,6 +65,7 @@ export const OnboardingScreen = () => {
           ))}
         </View>
         <Pressable
+          testID="onboarding-next"
           onPress={index === PAGES.length - 1 ? finish : () => setIndex(index + 1)}
           style={({ pressed }) => [styles.nextButton, pressed && styles.pressed]}
           accessibilityRole="button"

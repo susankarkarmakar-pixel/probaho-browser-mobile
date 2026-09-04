@@ -57,7 +57,7 @@ export const TabsScreen = () => {
 
   return (
     <ScreenContainer>
-      <View style={styles.header}>
+      <View testID="tabs-screen" style={styles.header}>
         <IconButton
           icon="grid-outline"
           label="Tab overview"
@@ -83,6 +83,7 @@ export const TabsScreen = () => {
           {isPrivateMode ? 'Private browsing is active' : 'All tabs'}
         </Text>
         <Pressable
+          testID="private-mode-button"
           onPress={handlePrivate}
           style={({ pressed }) => [styles.privateButton, pressed && styles.pressed]}
           accessibilityRole="button"
@@ -130,6 +131,7 @@ export const TabsScreen = () => {
           <Text style={styles.closeAllText}>Close All</Text>
         </Pressable>
         <Pressable
+          testID="new-tab-button"
           onPress={handleNewTab}
           style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
           accessibilityRole="button"

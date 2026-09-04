@@ -34,7 +34,7 @@ export const SettingsScreen = () => {
 
   return (
     <ScreenContainer>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView testID="settings-screen" contentContainerStyle={styles.content}>
         <View style={styles.pageHeader}>
           <View>
             <Text style={styles.pageTitle}>Settings</Text>

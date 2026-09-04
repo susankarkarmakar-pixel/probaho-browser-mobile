@@ -55,6 +55,7 @@ export const HomeScreen = () => {
         </View>
 
         <Pressable
+          testID="open-privacy-dashboard"
           onPress={() => navigation.navigate('PrivacyDashboard')}
           style={({ pressed }) => [styles.shieldTile, pressed && styles.pressed]}
           accessibilityRole="button"
@@ -71,6 +72,7 @@ export const HomeScreen = () => {
         <View style={styles.searchBar}>
           <Ionicons name="search-outline" size={22} color={COLORS.secondary} />
           <TextInput
+            testID="home-search-input"
             style={styles.searchInput}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -115,6 +117,7 @@ export const HomeScreen = () => {
             </View>
           </View>
           <Pressable
+            testID="view-privacy-report"
             onPress={() => navigation.navigate('PrivacyDashboard')}
             style={({ pressed }) => [styles.viewReport, pressed && styles.pressed]}
           >

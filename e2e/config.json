@@ -1,0 +1,8 @@
+{
+  "testRunner": "jest-circus/runner",
+  "testEnvironment": "./environment",
+  "testTimeout": 120000,
+  "maxWorkers": 1,
+  "reporters": ["detox/runners/jest/streamlineReporter"],
+  "verbose": true
+}

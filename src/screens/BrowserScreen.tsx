@@ -56,7 +56,7 @@ export const BrowserScreen = () => {
 
   return (
     <ScreenContainer>
-      <View style={styles.screen}>
+      <View testID="browser-screen" style={styles.screen}>
         <View style={styles.topBar}>
           <IconButton
             icon="chevron-back"
@@ -79,6 +79,7 @@ export const BrowserScreen = () => {
             />
           </View>
           <IconButton
+            testID="open-privacy-protection"
             icon="shield-checkmark-outline"
             label="Open privacy protection"
             color={COLORS.secondary}
@@ -118,6 +119,7 @@ export const BrowserScreen = () => {
             onPress={() => webViewRef.current?.reload()}
           />
           <Pressable
+            testID="open-tabs-from-browser"
             onPress={() => navigation.navigate('Tabs')}
             style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}
             accessibilityRole="button"

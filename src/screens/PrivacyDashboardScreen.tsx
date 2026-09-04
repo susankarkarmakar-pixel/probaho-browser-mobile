@@ -34,7 +34,7 @@ export const PrivacyDashboardScreen = () => {
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
+        <View testID="privacy-dashboard-screen" style={styles.header}>
           <IconButton icon="arrow-back" label="Back" onPress={() => navigation.goBack()} />
           <Text style={styles.title}>Privacy Dashboard</Text>
           <IconButton
@@ -112,6 +112,7 @@ export const PrivacyDashboardScreen = () => {
         </SurfaceCard>
         <View style={styles.actions}>
           <Pressable
+            testID="export-privacy-report"
             onPress={exportReport}
             style={({ pressed }) => [styles.exportButton, pressed && styles.pressed]}
             accessibilityRole="button"
@@ -120,6 +121,7 @@ export const PrivacyDashboardScreen = () => {
             <Text style={styles.exportText}>Export Report</Text>
           </Pressable>
           <Pressable
+            testID="clear-browsing-data"
             onPress={clearData}
             style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}
             accessibilityRole="button"

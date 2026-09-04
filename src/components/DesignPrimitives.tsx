@@ -22,6 +22,7 @@ type IconButtonProps = {
   color?: string;
   size?: number;
   variant?: 'plain' | 'filled' | 'outlined';
+  testID?: string;
 };
 
 export const IconButton = ({
@@ -31,8 +32,10 @@ export const IconButton = ({
   color = COLORS.text,
   size = 22,
   variant = 'plain',
+  testID,
 }: IconButtonProps) => (
   <Pressable
+    testID={testID}
     accessibilityRole="button"
     accessibilityLabel={label}
     onPress={onPress}

@@ -42,7 +42,7 @@ export const PrivacyProtectionSheet = ({
           onPress={onClose}
           accessibilityLabel="Close privacy protection"
         />
-        <View style={styles.sheet}>
+        <View testID="privacy-protection-sheet" style={styles.sheet}>
           <View style={styles.handle} />
           <View style={styles.header}>
             <View style={styles.titleWrap}>
@@ -52,6 +52,7 @@ export const PrivacyProtectionSheet = ({
               <Text style={styles.title}>Privacy{`\n`}Protection</Text>
             </View>
             <Pressable
+              testID="close-privacy-protection"
               onPress={onClose}
               accessibilityRole="button"
               accessibilityLabel="Close privacy protection"
