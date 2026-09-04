@@ -6,16 +6,25 @@ on:
       - 'v*.*.*'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 env:
   NODE_VERSION: 22.x
 
+permissions:
+  contents: write
+
 jobs:
+  validate:
+    name: Validate mobile app
+    uses: ./.github/workflows/mobile-ci.yml
+    permissions:
+      contents: read
+
   build-android-release:
     name: Build Android APK
+    needs: validate
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
