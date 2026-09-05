@@ -44,9 +44,9 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install --non-interactive
 
-      - name: Build debug APK
+      - name: Build debug and instrumentation APKs
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleDebug assembleAndroidTest --no-daemon --stacktrace
 
       - name: Enable KVM
         run: |
@@ -74,4 +74,5 @@ jobs:
           path: |
             artifacts
             android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           if-no-files-found: ignore
