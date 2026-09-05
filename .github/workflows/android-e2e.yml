@@ -61,6 +61,7 @@ jobs:
           target: default
           arch: x86_64
           profile: pixel_2
+          avd-name: detox-emulator
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: npx detox test -c android.emu.debug --headless --cleanup --record-logs all
