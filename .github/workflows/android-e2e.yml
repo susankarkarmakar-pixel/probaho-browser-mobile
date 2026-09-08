@@ -66,6 +66,12 @@ jobs:
           disable-animations: true
           script: npx detox test -c android.emu.debug --headless --cleanup --record-logs all
 
+      - name: Capture Android logcat on failure
+        if: failure()
+        run: |
+          mkdir -p artifacts
+          adb -s emulator-5554 logcat -d > artifacts/android-logcat.txt || true
+
       - name: Upload Detox artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
