@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -6,23 +6,58 @@ import { COLORS, RADII, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme'
 import { IconButton, PrivacyMetricCard, SurfaceCard } from '../components/DesignPrimitives';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { useBrowserStore } from '../store/browserStore';
+import { useLibraryStore } from '../store/libraryStore';
+import { usePrivacyStore } from '../store/privacyStore';
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const getDayLabel = (date: Date) => date.toLocaleDateString('en-US', { weekday: 'short' });
 
 export const PrivacyDashboardScreen = () => {
   const navigation = useNavigation<any>();
-  const { tabs, clearPrivateData } = useBrowserStore();
-  const trackerCount = useMemo(
-    () => tabs.reduce((total, tab) => total + tab.blockedCount, 0),
-    [tabs],
-  );
+  const { clearPrivateData: clearBrowserPrivateData } = useBrowserStore();
+  const { clearPrivateData: clearLibraryPrivateData } = useLibraryStore();
+  const { totals, recentActivity, clearPrivacyData } = usePrivacyStore();
+  const dailyActivity = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(now);
+      date.setHours(0, 0, 0, 0);
+      date.setDate(now.getDate() - (6 - index));
+      const nextDate = new Date(date);
+      nextDate.setDate(date.getDate() + 1);
+      const count = recentActivity.filter((item) => {
+        const timestamp = new Date(item.timestamp).getTime();
+        return timestamp >= date.getTime() && timestamp < nextDate.getTime();
+      }).length;
+      return { label: getDayLabel(date), count };
+    });
+  }, [recentActivity]);
+  const maxDailyActivity = Math.max(1, ...dailyActivity.map((item) => item.count));
+  const topTrackers = useMemo(() => {
+    const counts = recentActivity
+      .filter((item) => item.kind === 'tracker')
+      .reduce<Record<string, number>>((result, item) => {
+        result[item.host] = (result[item.host] || 0) + 1;
+        return result;
+      }, {});
+    return Object.entries(counts)
+      .sort(([, left], [, right]) => right - left)
+      .slice(0, 5);
+  }, [recentActivity]);
   const clearData = () =>
     Alert.alert(
       'Clear all browsing data?',
-      'This clears private tabs and resets the current session. Your settings remain unchanged.',
+      'This clears private tabs, history, privacy activity, and resets the current session. Your settings remain unchanged.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear all data', style: 'destructive', onPress: clearPrivateData },
+        {
+          text: 'Clear all data',
+          style: 'destructive',
+          onPress: () => {
+            clearBrowserPrivateData();
+            clearLibraryPrivateData();
+            clearPrivacyData();
+          },
+        },
       ],
     );
   const exportReport = () =>
@@ -47,14 +82,14 @@ export const PrivacyDashboardScreen = () => {
           <View style={styles.heroIcon}>
             <Ionicons name="shield-checkmark-outline" size={32} color={COLORS.secondary} />
           </View>
-          <Text style={styles.heroValue}>{trackerCount || '—'}</Text>
+          <Text style={styles.heroValue}>{totals.trackersBlocked || '—'}</Text>
           <Text style={styles.heroLabel}>Trackers Blocked</Text>
           <Text style={styles.heroCaption}>CURRENT SESSION</Text>
         </SurfaceCard>
         <View style={styles.metricsGrid}>
           <PrivacyMetricCard
             icon="megaphone-outline"
-            value="—"
+            value={String(totals.adsBlocked || '—')}
             label="Ads Blocked"
             accent={COLORS.danger}
             style={styles.metricCard}
@@ -75,8 +110,8 @@ export const PrivacyDashboardScreen = () => {
           />
           <PrivacyMetricCard
             icon="lock-closed-outline"
-            value="—"
-            label="Secure Sites"
+            value={String(totals.httpsUpgrades || '—')}
+            label="HTTPS Upgrades"
             accent={COLORS.secondary}
             style={styles.metricCard}
           />
@@ -88,28 +123,47 @@ export const PrivacyDashboardScreen = () => {
             <View style={styles.chartLine} />
             <View style={styles.chartLine} />
             <View style={styles.chartBars}>
-              {DAYS.map((day) => (
-                <View key={day} style={styles.barWrap}>
+              {dailyActivity.map((day) => (
+                <View key={day.label} style={styles.barWrap}>
                   <View
-                    style={[styles.bar, { height: day === 'Thu' ? 45 : day === 'Sat' ? 29 : 12 }]}
+                    style={[
+                      styles.bar,
+                      { height: day.count ? Math.max(8, (day.count / maxDailyActivity) * 110) : 4 },
+                    ]}
                   />
-                  <Text style={styles.day}>{day}</Text>
+                  <Text style={styles.day}>{day.label}</Text>
                 </View>
               ))}
             </View>
           </View>
           <Text style={styles.chartNote}>
-            Activity history will appear as protection events are recorded.
+            {totals.requests
+              ? `${totals.requests} privacy decisions recorded on this device.`
+              : 'Activity history will appear as protection events are recorded.'}
           </Text>
         </SurfaceCard>
         <Text style={styles.sectionTitle}>Top Trackers Blocked</Text>
-        <SurfaceCard style={styles.emptyCard}>
-          <Ionicons name="analytics-outline" size={24} color={COLORS.textSubtle} />
-          <Text style={styles.emptyTitle}>No tracker history yet</Text>
-          <Text style={styles.emptyText}>
-            Tracker-level reporting will populate after supported protection events are recorded.
-          </Text>
-        </SurfaceCard>
+        {topTrackers.length > 0 ? (
+          topTrackers.map(([host, count]) => (
+            <SurfaceCard key={host} style={styles.trackerRow}>
+              <View style={styles.trackerIcon}>
+                <Ionicons name="radio-outline" size={18} color={COLORS.secondary} />
+              </View>
+              <Text numberOfLines={1} style={styles.trackerHost}>
+                {host}
+              </Text>
+              <Text style={styles.trackerCount}>{count}</Text>
+            </SurfaceCard>
+          ))
+        ) : (
+          <SurfaceCard style={styles.emptyCard}>
+            <Ionicons name="analytics-outline" size={24} color={COLORS.textSubtle} />
+            <Text style={styles.emptyTitle}>No tracker history yet</Text>
+            <Text style={styles.emptyText}>
+              Tracker-level reporting will populate after supported protection events are recorded.
+            </Text>
+          </SurfaceCard>
+        )}
         <View style={styles.actions}>
           <Pressable
             testID="export-privacy-report"
@@ -194,6 +248,17 @@ const styles = StyleSheet.create({
   bar: { width: 14, borderRadius: 7, backgroundColor: COLORS.secondary },
   day: { color: COLORS.textMuted, ...TYPOGRAPHY.caption },
   chartNote: { color: COLORS.textSubtle, ...TYPOGRAPHY.footnote, marginTop: SPACING.md },
+  trackerRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, padding: SPACING.sm },
+  trackerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: RADII.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.secondaryContainer,
+  },
+  trackerHost: { color: COLORS.text, ...TYPOGRAPHY.callout, flex: 1 },
+  trackerCount: { color: COLORS.secondary, ...TYPOGRAPHY.callout },
   emptyCard: { alignItems: 'center', paddingVertical: SPACING.xl },
   emptyTitle: { color: COLORS.text, ...TYPOGRAPHY.callout, marginTop: SPACING.sm },
   emptyText: {

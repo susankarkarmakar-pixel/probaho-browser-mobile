@@ -1,57 +1,82 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
+import type { WebViewNavigation } from 'react-native-webview/lib/WebViewTypes';
+
 import { COLORS, RADII, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { IconButton } from '../components/DesignPrimitives';
 import { PrivacyProtectionSheet } from '../components/PrivacyProtectionSheet';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { URLInput } from '../components/URLInput';
 import { WebViewWrapper } from '../components/WebViewWrapper';
+import type { PrivacyDecision } from '../privacy/privacyEngine';
 import { useBrowserStore } from '../store/browserStore';
+import { useLibraryStore } from '../store/libraryStore';
+import { usePrivacyStore } from '../store/privacyStore';
 import { useSettingsStore } from '../store/settingsStore';
 
 export const BrowserScreen = () => {
   const navigation = useNavigation<any>();
   const webViewRef = useRef<WebView>(null);
   const { tabs, activeTabId, isPrivateMode, updateTab } = useBrowserStore();
+  const { addHistory, addBookmark, addReadingList } = useLibraryStore();
+  const { recordDecision } = usePrivacyStore();
   const { blockTrackers, blockAds, forceHttps, setBlockTrackers, setBlockAds, setForceHttps } =
     useSettingsStore();
   const activeTab = tabs.find((tab) => tab.id === activeTabId);
   const [currentUrl, setCurrentUrl] = useState(activeTab?.url || 'https://duckduckgo.com');
   const [progress, setProgress] = useState(0);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (activeTab) setCurrentUrl(activeTab.url);
-  }, [activeTabId]);
+    if (activeTab) {
+      setCurrentUrl(activeTab.url);
+      setErrorMessage(null);
+      setProgress(0);
+    }
+  }, [activeTabId, activeTab?.url]);
 
-  if (!activeTab)
+  if (!activeTab) {
     return (
       <ScreenContainer>
         <View />
       </ScreenContainer>
     );
+  }
 
-  const handleNavigationStateChange = (navState: any) => {
+  const handleNavigationStateChange = (navState: WebViewNavigation) => {
     setCurrentUrl(navState.url);
+    setErrorMessage(null);
     updateTab(activeTab.id, {
       url: navState.url,
       title: navState.title || 'New Tab',
       canGoBack: navState.canGoBack,
       canGoForward: navState.canGoForward,
     });
+    if (!activeTab.isPrivate && !isPrivateMode && /^https?:\/\//i.test(navState.url)) {
+      addHistory({ url: navState.url, title: navState.title || 'New Tab' });
+    }
   };
 
   const handleNavigate = (url: string) => {
     setCurrentUrl(url);
+    setErrorMessage(null);
     updateTab(activeTab.id, { url });
   };
 
   const handleProgress = (value: number) => {
     setProgress(value);
     updateTab(activeTab.id, { progress: value });
+  };
+
+  const handlePrivacyDecision = (decision: PrivacyDecision) => {
+    recordDecision(decision);
+    if (decision.action === 'block') {
+      updateTab(activeTab.id, { blockedCount: activeTab.blockedCount + 1 });
+    }
   };
 
   return (
@@ -98,12 +123,44 @@ export const BrowserScreen = () => {
             url={currentUrl}
             isPrivateMode={activeTab.isPrivate || isPrivateMode}
             onNavigationStateChange={handleNavigationStateChange}
+            onNavigationRequest={handleNavigate}
+            onPrivacyDecision={handlePrivacyDecision}
             onLoadProgress={handleProgress}
+            onWebViewError={setErrorMessage}
           />
-          {progress > 0 && progress < 0.1 && (
+          {progress > 0 && progress < 0.1 && !errorMessage && (
             <View style={styles.loadingPill}>
               <Ionicons name="lock-closed-outline" size={14} color={COLORS.secondary} />
               <Text style={styles.loadingText}>Connecting securely</Text>
+            </View>
+          )}
+          {errorMessage && (
+            <View testID="browser-error-state" style={styles.errorOverlay}>
+              <View style={styles.errorIcon}>
+                <Ionicons name="cloud-offline-outline" size={28} color={COLORS.secondary} />
+              </View>
+              <Text style={styles.errorTitle}>This page could not load</Text>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+              <View style={styles.errorActions}>
+                <Pressable
+                  testID="retry-browser-page"
+                  onPress={() => {
+                    setErrorMessage(null);
+                    webViewRef.current?.reload();
+                  }}
+                  style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.retryText}>Try again</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => navigation.navigate('Home')}
+                  style={({ pressed }) => [styles.homeButton, pressed && styles.pressed]}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.homeText}>Go home</Text>
+                </Pressable>
+              </View>
             </View>
           )}
         </View>
@@ -131,7 +188,22 @@ export const BrowserScreen = () => {
           <IconButton
             icon="ellipsis-horizontal"
             label="Open browser menu"
-            onPress={() => navigation.navigate('Settings')}
+            onPress={() =>
+              Alert.alert('Page actions', activeTab.title || currentUrl, [
+                {
+                  text: 'Add bookmark',
+                  onPress: () =>
+                    addBookmark({ url: currentUrl, title: activeTab.title || currentUrl }),
+                },
+                {
+                  text: 'Save to reading list',
+                  onPress: () =>
+                    addReadingList({ url: currentUrl, title: activeTab.title || currentUrl }),
+                },
+                { text: 'Open settings', onPress: () => navigation.navigate('Settings') },
+                { text: 'Cancel', style: 'cancel' },
+              ])
+            }
           />
         </View>
       </View>
@@ -181,6 +253,49 @@ const styles = StyleSheet.create({
     borderRadius: RADII.full,
   },
   loadingText: { color: COLORS.textMuted, ...TYPOGRAPHY.caption },
+  errorOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.xl,
+    backgroundColor: COLORS.background,
+  },
+  errorIcon: {
+    width: 62,
+    height: 62,
+    borderRadius: RADII.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.privateSurface,
+  },
+  errorTitle: {
+    color: COLORS.text,
+    ...TYPOGRAPHY.headline,
+    marginTop: SPACING.md,
+    textAlign: 'center',
+  },
+  errorText: {
+    color: COLORS.textMuted,
+    ...TYPOGRAPHY.body,
+    textAlign: 'center',
+    marginTop: SPACING.sm,
+  },
+  errorActions: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.lg },
+  retryButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: RADII.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  retryText: { color: COLORS.surfaceMuted, ...TYPOGRAPHY.callout },
+  homeButton: {
+    borderWidth: 1,
+    borderColor: COLORS.borderSoft,
+    borderRadius: RADII.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  homeText: { color: COLORS.text, ...TYPOGRAPHY.callout },
   bottomBar: {
     minHeight: 60,
     backgroundColor: COLORS.surfaceMuted,
